@@ -27,3 +27,32 @@ struct RegisteredEffectMetadata
 };
 
 inline std::unordered_map<std::string_view, RegisteredEffectMetadata> g_RegisteredEffectsMetadata;
+
+// GiftDeck build: category of each built-in effect (Player, Peds, Vehicle, Misc, Time, Weather, Screen, Meta), derived
+// from the Effects/db/<Folder>/ source folder the effect is registered in
+inline std::unordered_map<std::string_view, std::string_view> g_RegisteredEffectsSourceCategory;
+
+inline std::string_view GetEffectCategoryFromSourcePath(std::string_view path)
+{
+	std::string_view folder;
+	for (auto marker : { "\\db\\", "/db/" })
+	{
+		auto pos = path.rfind(marker);
+		if (pos == path.npos)
+			continue;
+
+		auto rest = path.substr(pos + std::string_view(marker).size());
+		auto end  = rest.find_first_of("\\/");
+		if (end == rest.npos)
+			continue;
+
+		folder = rest.substr(0, end);
+		break;
+	}
+
+	if (folder == "Vehs")
+		return "Vehicle";
+	if (folder.empty())
+		return "Misc";
+	return folder;
+}

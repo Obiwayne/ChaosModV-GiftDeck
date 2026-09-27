@@ -12,7 +12,7 @@
 #define REGISTER_EFFECT(start, stop, tick, ...)                                        \
 	namespace                                                                          \
 	{                                                                                  \
-		RegisterEffect CHAOSCONCAT(_effect, __LINE__)(start, stop, tick, __VA_ARGS__); \
+		RegisterEffect CHAOSCONCAT(_effect, __LINE__)(start, stop, tick, __VA_ARGS__, __FILE__); \
 	}
 
 class RegisterEffect
@@ -21,7 +21,7 @@ class RegisterEffect
 
   public:
 	RegisterEffect(std::function<void()> start, std::function<void()> stop, std::function<void()> tick,
-	               RegisteredEffectMetadata &&effectMetadata)
+	               RegisteredEffectMetadata &&effectMetadata, const char *sourceFile = nullptr)
 	    : m_RegisteredEffect(std::string(effectMetadata.Id), start, stop, tick)
 	{
 		static bool disableEffectRegistration = []()
@@ -34,6 +34,10 @@ class RegisterEffect
 
 		g_RegisteredEffects.push_back(m_RegisteredEffect);
 		g_RegisteredEffectsMetadata[effectMetadata.Id] = effectMetadata;
+
+		// GiftDeck build: remember the effect's category (the Effects/db/<Category>/ folder it lives in)
+		if (sourceFile)
+			g_RegisteredEffectsSourceCategory[effectMetadata.Id] = GetEffectCategoryFromSourcePath(sourceFile);
 	}
 
 	RegisterEffect(const RegisterEffect &)            = delete;
