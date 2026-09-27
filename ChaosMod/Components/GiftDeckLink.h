@@ -11,7 +11,7 @@
 
 #include <json.hpp>
 
-#define GIFTDECK_BUILD_VERSION "1"
+#define GIFTDECK_BUILD_VERSION "2"
 
 class GiftDeckLink : public Component
 {

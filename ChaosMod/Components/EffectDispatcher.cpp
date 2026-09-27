@@ -250,7 +250,8 @@ EffectDispatcher::EffectDispatcher() : Component()
 
 	for (const auto &[effectId, effectData] : g_EnabledEffects)
 	{
-		if (!effectData.IsMeta() && !effectData.IsUtility() && effectData.TimedType != EffectTimedType::Permanent)
+		if (!effectData.IsMeta() && !effectData.IsUtility() && effectData.TimedType != EffectTimedType::Permanent
+		    && !effectData.IsGiftDeckOnly())
 		{
 			// There's at least 1 enabled non-permanent effect, enable timer
 			m_EnableNormalEffectDispatch = true;

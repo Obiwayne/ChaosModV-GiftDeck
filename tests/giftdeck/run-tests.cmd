@@ -8,7 +8,7 @@ setlocal
 set HERE=%~dp0
 set ROOT=%HERE%..\..
 set ASI=%~1
-if "%ASI%"=="" set ASI=%ROOT%\ChaosMod\build-Release\ChaosMod.asi
+if "%ASI%"=="" set ASI=%ROOT%\ChaosMod\build-giftdeck-Release\ChaosMod.asi
 if "%VSROOT%"=="" set VSROOT=C:\Program Files\Microsoft Visual Studio\18\Community
 call "%VSROOT%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 set OUT=%HERE%out
@@ -29,6 +29,10 @@ mkdir "%OUT%\dumpwork\chaosmod\configs"
 if not "%~2"=="" copy /y "%~2" "%OUT%\dumpwork\chaosmod\configs\effects.json" >nul
 "%OUT%\dump_hello.exe" "%ASI%" "%OUT%\dumpwork" "%OUT%\hello.json" || set FAILED=1
 python "%HERE%check_hello.py" "%OUT%\hello.json" "%ROOT%\ConfigApp\Effects.cs" || set FAILED=1
+
+echo.
+echo === GiftDeckRunDisabledEffects (offline, real trigger checks from the .asi) ===
+python "%HERE%test_disabled.py" "%OUT%\dump_hello.exe" "%ASI%" "%OUT%" || set FAILED=1
 
 if defined FAILED (echo TESTS FAILED & exit /b 1)
 echo ALL TESTS PASSED

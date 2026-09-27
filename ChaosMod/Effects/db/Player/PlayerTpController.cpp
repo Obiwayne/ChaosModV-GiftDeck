@@ -308,7 +308,7 @@ static const std::vector<std::string_view> fakeTpTypes = {
 static bool IsValidFakeTpType(std::string_view type)
 {
 	auto effectIdentifier = EffectIdentifier(std::string(type));
-	if (!g_EnabledEffects.contains(effectIdentifier))
+	if (!g_EnabledEffects.contains(effectIdentifier) || g_EnabledEffects.at(effectIdentifier).IsGiftDeckOnly())
 		return false;
 
 	if (type == "tp_mission")

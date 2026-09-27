@@ -6,7 +6,10 @@ enum class EffectAttributes
 	IsMeta              = (1 << 1),
 	IsUtility           = (1 << 2),
 	IsTemporary         = (1 << 3),
-	HideRealNameOnStart = (1 << 4)
+	HideRealNameOnStart = (1 << 4),
+	// GiftDeck build: disabled in effects.json but loaded so GiftDeck triggers can start it. Never picked by the
+	// timer, voting, meta effects, shortcuts or the debug menu.
+	GiftDeckOnly        = (1 << 5)
 };
 
 inline EffectAttributes operator|(EffectAttributes lhs, EffectAttributes rhs)

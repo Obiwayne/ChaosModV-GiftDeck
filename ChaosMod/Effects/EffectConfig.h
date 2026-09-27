@@ -124,14 +124,18 @@ namespace EffectConfig
 		return configValues;
 	}
 
+	// loadDisabledForGiftDeck (GiftDeck build): effects disabled in the config are still loaded, flagged
+	// EffectAttributes::GiftDeckOnly, so only GiftDeck triggers can start them. Permanent ones are never loaded that way.
 	inline bool GetConfigFromMetadata(OptionsFile &effectsFile, std::string_view effectId,
-	                                  RegisteredEffectMetadata &effectMetadata, EffectData &outData, bool isJson)
+	                                  RegisteredEffectMetadata &effectMetadata, EffectData &outData, bool isJson,
+	                                  bool loadDisabledForGiftDeck = false)
 	{
 		ConfigValues configValues =
 		    isJson ? GetConfigValuesJson(effectsFile, effectId) : GetConfigValuesIni(effectsFile, effectId);
 		// HACK: Store EffectCustomName seperately
 
-		if (!configValues.Values.Enabled)
+		const bool giftDeckOnly = !configValues.Values.Enabled;
+		if (giftDeckOnly && (!loadDisabledForGiftDeck || (effectMetadata.IsTimed && configValues.Values.Permanent)))
 			return false;
 
 		EffectData effectData;
@@ -163,6 +167,11 @@ namespace EffectConfig
 		effectData.SetAttribute(EffectAttributes::IsMeta, effectMetadata.ExecutionType == EffectExecutionType::Meta);
 		effectData.Name = effectMetadata.Name;
 		effectData.SetAttribute(EffectAttributes::HideRealNameOnStart, effectMetadata.HideRealNameOnStart);
+		if (giftDeckOnly)
+		{
+			effectData.SetAttribute(EffectAttributes::GiftDeckOnly, true);
+			effectData.SetAttribute(EffectAttributes::ExcludedFromVoting, true);
+		}
 #ifdef CHAOSDEBUG
 		effectData.ShortcutKeycode = effectMetadata.DebugShortcutKeycode ? effectMetadata.DebugShortcutKeycode
 		                                                                 : configValues.Values.ShortcutKeycode;
@@ -180,7 +189,8 @@ namespace EffectConfig
 		for (auto effectType : effectMetadata.IncompatibleWith)
 			effectData.IncompatibleIds.insert(std::string(g_RegisteredEffectsMetadata.at(effectType).Id));
 
-		if (effectMetadata.EffectGroupType != EffectGroupType::None)
+		// GiftDeck-only effects stay out of effect groups so they don't change the random pick weights
+		if (effectMetadata.EffectGroupType != EffectGroupType::None && !giftDeckOnly)
 		{
 			effectData.GroupType = g_EffectGroups.find(g_EffectTypeToGroup.at(effectMetadata.EffectGroupType))->first;
 			g_EffectGroups[effectData.GroupType].MemberCount++;
@@ -191,7 +201,8 @@ namespace EffectConfig
 		return true;
 	}
 
-	inline void ReadConfig(const std::vector<std::string_view> &lookupPaths, auto &out)
+	inline void ReadConfig(const std::vector<std::string_view> &lookupPaths, auto &out,
+	                       bool loadDisabledForGiftDeck = false)
 	{
 		DEBUG_LOG("Parsing effect config");
 
@@ -201,7 +212,8 @@ namespace EffectConfig
 		for (auto &[effectId, effectMetadata] : g_RegisteredEffectsMetadata)
 		{
 			EffectData effectData;
-			if (GetConfigFromMetadata(effectsFile, effectId, effectMetadata, effectData, isJson))
+			if (GetConfigFromMetadata(effectsFile, effectId, effectMetadata, effectData, isJson,
+			                          loadDisabledForGiftDeck))
 				out.emplace(EffectIdentifier(std::string(effectId)), effectData);
 		}
 

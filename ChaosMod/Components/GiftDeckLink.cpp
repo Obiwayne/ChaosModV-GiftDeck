@@ -85,6 +85,8 @@ json GiftDeckLink_BuildHello()
 		{
 			const auto &effectData = enabledIt->second;
 			entry.Description      = TimedDescription(effectData.TimedType);
+			if (effectData.IsGiftDeckOnly())
+				entry.Description += ". Disabled for random picks in the Chaos Mod config (GiftDeck can still start it)";
 			if (effectData.HasCustomName())
 				entry.Description += ". Shown in game as \"" + effectData.CustomName + "\"";
 		}
@@ -163,6 +165,56 @@ static std::string MakeUserSuffix(const std::string &user)
 	return clean.empty() ? "" : "(" + clean + ")";
 }
 
+// Checks whether a trigger's effect can be started. Returns the effect's identifier, or nullptr with the reason in
+// outMessage (on success outMessage is the quoted effect name).
+static const EffectIdentifier *CheckTrigger(const std::string &command, std::string &outMessage)
+{
+	const EffectIdentifier effectId(command);
+
+	auto enabledIt = g_EnabledEffects.find(effectId);
+	if (enabledIt == g_EnabledEffects.end())
+	{
+		if (g_RegisteredEffectsMetadata.contains(command))
+			outMessage = "Effect \"" + command + "\" is disabled in the Chaos Mod config";
+		else
+			outMessage = "Unknown effect id \"" + command + "\"";
+		return nullptr;
+	}
+
+	const auto &effectData = enabledIt->second;
+	const auto &name       = effectData.HasCustomName() ? effectData.CustomName : effectData.Name;
+
+	if (effectData.TimedType == EffectTimedType::Permanent)
+	{
+		outMessage = "\"" + name + "\" is set to permanent in the Chaos Mod config and can't be triggered";
+		return nullptr;
+	}
+
+	if (effectData.IsTemporary())
+	{
+		outMessage = "\"" + name + "\" is a temporary script effect";
+		return nullptr;
+	}
+
+	if (IsEffectFilteredOut(effectId))
+	{
+		auto reason = GetFilterReason(effectId);
+		outMessage  = "\"" + name + "\" can't run right now" + (reason.empty() ? "" : ": " + reason);
+		return nullptr;
+	}
+
+	outMessage = "\"" + name + "\"";
+	return &enabledIt->first;
+}
+
+static void LoadEffectsConfig()
+{
+	g_EnabledEffects.clear();
+	EffectConfig::ReadConfig(
+	    { "chaosmod/configs/effects.json", "chaosmod/configs/effects.ini", "chaosmod/effects.ini" }, g_EnabledEffects,
+	    g_OptionsManager.GetConfigValue({ "GiftDeckRunDisabledEffects" }, true));
+}
+
 GiftDeckLink::GiftDeckLink() : Component()
 {
 	m_Enabled          = g_OptionsManager.GetConfigValue({ "EnableGiftDeckLink" }, true);
@@ -209,40 +261,11 @@ void GiftDeckLink::OnRun()
 	GameLinkClient::Trigger trigger;
 	while (ms_Client->PopTrigger(trigger))
 	{
-		const EffectIdentifier effectId(trigger.Command);
-
-		auto enabledIt = g_EnabledEffects.find(effectId);
-		if (enabledIt == g_EnabledEffects.end())
+		std::string message;
+		auto effectId = CheckTrigger(trigger.Command, message);
+		if (!effectId)
 		{
-			if (g_RegisteredEffectsMetadata.contains(trigger.Command))
-				ms_Client->SendResult(trigger.Id, false,
-				                      "Effect \"" + trigger.Command + "\" is disabled in the Chaos Mod config");
-			else
-				ms_Client->SendResult(trigger.Id, false, "Unknown effect id \"" + trigger.Command + "\"");
-			continue;
-		}
-
-		const auto &effectData = enabledIt->second;
-		const auto &name       = effectData.HasCustomName() ? effectData.CustomName : effectData.Name;
-
-		if (effectData.TimedType == EffectTimedType::Permanent)
-		{
-			ms_Client->SendResult(trigger.Id, false,
-			                      "\"" + name + "\" is set to permanent in the Chaos Mod config and can't be triggered");
-			continue;
-		}
-
-		if (effectData.IsTemporary())
-		{
-			ms_Client->SendResult(trigger.Id, false, "\"" + name + "\" is a temporary script effect");
-			continue;
-		}
-
-		if (IsEffectFilteredOut(effectId))
-		{
-			auto reason = GetFilterReason(effectId);
-			ms_Client->SendResult(trigger.Id, false,
-			                      "\"" + name + "\" can't run right now" + (reason.empty() ? "" : ": " + reason));
+			ms_Client->SendResult(trigger.Id, false, message);
 			continue;
 		}
 
@@ -252,13 +275,13 @@ void GiftDeckLink::OnRun()
 			continue;
 		}
 
-		LOG("GiftDeck trigger: \"" << name << "\" (" << trigger.Command << ") from " << trigger.User << " / "
-		                           << trigger.Gift << " x" << trigger.Count);
+		LOG("GiftDeck trigger: " << message << " (" << trigger.Command << ") from " << trigger.User << " / "
+		                         << trigger.Gift << " x" << trigger.Count);
 
-		GetComponent<EffectDispatcher>()->DispatchEffect(enabledIt->first, EffectDispatcher::DispatchEffectFlag_None,
+		GetComponent<EffectDispatcher>()->DispatchEffect(*effectId, EffectDispatcher::DispatchEffectFlag_None,
 		                                                 m_ShowUserInEffect ? MakeUserSuffix(trigger.User) : "");
 
-		ms_Client->SendResult(trigger.Id, true, "Started \"" + name + "\"");
+		ms_Client->SendResult(trigger.Id, true, "Started " + message);
 	}
 }
 
@@ -271,14 +294,13 @@ void GiftDeckLink_Shutdown()
 	}
 }
 
-// Offline dump used by the test harness (tests/giftdeck): loads the effects config from the current directory
-// (chaosmod/configs/effects.json) and writes the hello message that would be sent to GiftDeck.
+// Offline dump used by the test harness (tests/giftdeck): loads config.json + effects.json from the current directory
+// (chaosmod/configs/) and writes the hello message that would be sent to GiftDeck.
 // The mod is loaded with CHAOSMOD_GIFTDECK_DUMP set so DllMain skips all game hooks.
 extern "C" __declspec(dllexport) int GiftDeckDumpHello(const char *outPath)
 {
-	g_EnabledEffects.clear();
-	EffectConfig::ReadConfig(
-	    { "chaosmod/configs/effects.json", "chaosmod/configs/effects.ini", "chaosmod/effects.ini" }, g_EnabledEffects);
+	g_OptionsManager.Reset();
+	LoadEffectsConfig();
 
 	auto hello = GiftDeckLink_BuildHello();
 
@@ -288,4 +310,19 @@ extern "C" __declspec(dllexport) int GiftDeckDumpHello(const char *outPath)
 	file << DumpJson(hello, 2);
 
 	return static_cast<int>(hello["commands"].size());
+}
+
+// Offline trigger check used by the test harness: runs the same checks as a GiftDeck trigger (without starting the
+// effect) against the config loaded by GiftDeckDumpHello. Returns 1 = would start, 0 = refused; message in outMessage.
+extern "C" __declspec(dllexport) int GiftDeckCheckTrigger(const char *command, char *outMessage, int outSize)
+{
+	std::string message;
+	bool ok = CheckTrigger(command, message) != nullptr;
+	if (outMessage && outSize > 0)
+	{
+		auto len = std::min<size_t>(message.size(), static_cast<size_t>(outSize - 1));
+		memcpy(outMessage, message.data(), len);
+		outMessage[len] = 0;
+	}
+	return ok ? 1 : 0;
 }

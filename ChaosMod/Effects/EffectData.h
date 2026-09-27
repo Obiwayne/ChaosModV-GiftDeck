@@ -49,7 +49,13 @@ class EffectData
 
 	inline bool IsHidden() const
 	{
-		return IsTemporary() || TimedType == EffectTimedType::Permanent;
+		return IsTemporary() || TimedType == EffectTimedType::Permanent || IsGiftDeckOnly();
+	}
+
+	// GiftDeck build: see EffectAttributes::GiftDeckOnly
+	inline bool IsGiftDeckOnly() const
+	{
+		return static_cast<bool>(Attributes & EffectAttributes::GiftDeckOnly);
 	}
 
 	inline bool IsMeta() const

@@ -45,8 +45,10 @@ static void ParseEffectsFile()
 {
 	g_EnabledEffects.clear();
 
+	// GiftDeck build: effects disabled in effects.json can still be started by GiftDeck (never picked randomly)
 	EffectConfig::ReadConfig(
-	    { "chaosmod/configs/effects.json", "chaosmod/configs/effects.ini", "chaosmod/effects.ini" }, g_EnabledEffects);
+	    { "chaosmod/configs/effects.json", "chaosmod/configs/effects.ini", "chaosmod/effects.ini" }, g_EnabledEffects,
+	    g_OptionsManager.GetConfigValue({ "GiftDeckRunDisabledEffects" }, true));
 }
 
 static void Init()
@@ -106,9 +108,10 @@ static void Init()
 	}
 
 	LOG("Parsing config files");
-	ParseEffectsFile();
-
+	// GiftDeck build: reload config.json first, the effects parsing reads GiftDeckRunDisabledEffects from it
 	g_OptionsManager.Reset();
+
+	ParseEffectsFile();
 
 	ms_Flags.ClearEffectsShortcutEnabled =
 	    g_OptionsManager.GetConfigValue({ "EnableClearEffectsShortcut" }, OPTION_DEFAULT_SHORTCUT_CLEAR_EFFECTS);

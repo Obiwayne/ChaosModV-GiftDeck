@@ -1,6 +1,9 @@
 // Offline dump of the GameLink hello message (the full effect list) from a built ChaosMod.asi, without the game.
 //
-// usage: dump_hello.exe <ChaosMod.asi> <work dir containing chaosmod\configs\effects.json (optional)> <out.json>
+// usage: dump_hello.exe <ChaosMod.asi> <work dir containing chaosmod\configs\*.json (optional)> <out.json> [effect ids]
+//
+// For every extra effect id it also runs the mod's trigger checks (GiftDeckCheckTrigger) and prints
+// "CHECK <id> <1|0> <message>".
 //
 // Sets CHAOSMOD_GIFTDECK_DUMP so the mod's DllMain skips every game hook, loads the .asi (its static initializers
 // register all built-in effects exactly as in game) and calls the exported GiftDeckDumpHello().
@@ -42,6 +45,16 @@ int wmain(int argc, wchar_t **argv)
 
 	int count = dump(outPath.string().c_str());
 	std::printf("effects in hello: %d\n", count);
+
+	using CheckFn = int (*)(const char *, char *, int);
+	auto check    = reinterpret_cast<CheckFn>(GetProcAddress(mod, "GiftDeckCheckTrigger"));
+	for (int i = 4; i < argc && check; i++)
+	{
+		char id[256] {}, message[1024] {};
+		WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, id, sizeof(id) - 1, nullptr, nullptr);
+		int ok = check(id, message, sizeof(message));
+		std::printf("CHECK %s %d %s\n", id, ok, message);
+	}
 	std::fflush(stdout);
 
 	// Skip DLL teardown (game-side globals were never set up)

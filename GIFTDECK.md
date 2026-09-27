@@ -24,6 +24,10 @@ Optional settings (chaosmod/configs/config.json)
   "EnableGiftDeckLink": false             turn the GiftDeck connection off
   "GiftDeckLinkPort": 21216               another GameLink port
   "GiftDeckShowUserInEffectName": false   don't show "(nickname)" after the effect name
+  "GiftDeckRunDisabledEffects": false     only let GiftDeck start effects that are enabled in the effects config
+                                          (default true: effects you turned off there are only left out of random
+                                          picks, timer, voting, meta effects, shortcuts and the debug menu;
+                                          GiftDeck can still start them)
 
 Dumping the effect list
 -----------------------
