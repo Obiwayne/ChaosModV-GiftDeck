@@ -10,6 +10,7 @@
 #include "Components/EffectShortcuts.h"
 #include "Components/EffectSound/EffectSoundManagers.h"
 #include "Components/Failsafe.h"
+#include "Components/GiftDeckLink.h"
 #include "Components/HelpTextQueue.h"
 #include "Components/KeyStates.h"
 #include "Components/LuaScripts.h"
@@ -185,6 +186,8 @@ static void Init()
 
 	INIT_COMPONENT("KeyStates", "key state handler", KeyStates);
 
+	INIT_COMPONENT("GiftDeckLink", "GiftDeck GameLink client", GiftDeckLink);
+
 	INIT_COMPONENT("Voting", "voting", Voting);
 
 	INIT_COMPONENT("Failsafe", "Failsafe", Failsafe);
@@ -358,6 +361,8 @@ namespace Main
 		if (!ms_ModDisabled)
 			for (auto component : g_Components)
 				component->OnModPauseCleanup(Component::PauseCleanupFlags_UnsafeCleanup);
+
+		GiftDeckLink_Shutdown();
 
 		LOG("Mod unload complete!");
 	}

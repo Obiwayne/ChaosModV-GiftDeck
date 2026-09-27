@@ -19,7 +19,7 @@ set_target_properties(ChaosMod PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 target_compile_definitions(ChaosMod PUBLIC $<$<CONFIG:Debug>:CHAOSDEBUG> NDEBUG WIN32_LEAN_AND_MEAN SOL_ALL_SAFETIES_ON SOL_DEFAULT_PASS_ON_ERROR)
 
 set(include_dirs ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/../vendor ${PROJECT_SOURCE_DIR}/../vendor/lua/include)
-set(link_libs shv minhook lua54 winmm d3dcompiler xinput)
+set(link_libs shv minhook lua54 winmm d3dcompiler xinput winhttp)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../vendor/shv shv)
 add_subdirectory(${PROJECT_SOURCE_DIR}/../vendor/minhook minhook)
