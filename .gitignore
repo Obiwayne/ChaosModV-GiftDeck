@@ -343,3 +343,10 @@ build/
 ChaosMod/CMakePresets.json
 Installer/src/
 Installer/dst/
+
+# GiftDeck build outputs
+ChaosMod/build-*/
+/dist/
+/release/
+scripts/.cache/
+tests/giftdeck/out/
